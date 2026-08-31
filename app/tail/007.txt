@@ -1,0 +1,35 @@
+sh(`<div class="diagBlock ${cls}"><div class="head"><b>Block ${b.id}</b><span class="tag">${n}/${cap} bad codewords · target ≤ ${target}</span></div><div class="tiny">data ${x.data.size} · parity ${x.ecc.size} · ${b.eccCount} ECC bytes</div><div class="meter"><i style="width:${pct}%;background:${cls==='bad'?'#ff4d2e':cls==='warn'?'#ffe066':'#3ee68a'}"></i></div></div>`);
+  }
+  rows.unshift(`<div class="tiny">${a.changedModules} overridden modules → ${a.streams.size} corrupted codewords; ${a.remainder} edited remainder bits. Counts assume perfect sampling everywhere else.</div>`);
+  els.integrity.innerHTML=rows.join('');
+}
+function targetCostForModule(r,c){
+  if(!state.target || !state.target.active?.[r]?.[c]) return 0.7;
+  const desired=state.target.dark[r][c], weight=state.target.weight[r][c] ?? 1;
+  const edited=currentDark(r,c), base=baselineDark(r,c);
+  if(edited===desired && base!==desired) return 1 + 4*weight;
+  return .2 + weight*.3;
+}
+function repairCodewordCost(streamIndex){
+  const q=state.qr; let cost=0, count=0;
+  for(const p of (q.modulePositionsByStream[streamIndex]||[])){
+    if(state.edits.has(key(p.r,p.c))){ cost += targetCostForModule(p.r,p.c); count++; }
+  }
+  return count ? cost : Infinity;
+}
+function intelligentRepair(){
+  const q=state.qr; if(!q) return;
+  const frac=Number(els.repairBudget.value)/100;
+  let repaired=0;
+  for(const b of q.blocks){
+    while(true){
+      const a=analysisOfEdits(); const x=a.byBlock.get(b.id); const bad=x?Array.from(x.all):[];
+      const target=Math.floor(b.correctionCapacity*frac);
+      if(bad.length<=target) break;
+      bad.sort((u,v)=>repairCodewordCost(u)-repairCodewordCost(v));
+      const victim=bad[0]; if(victim===undefined) break;
+      for(const p of (q.modulePositionsByStream[victim]||[])) state.edits.delete(key(p.r,p.c));
+      repaired++;
+    }
+  }
+  els.decoderResults.textContent=`Repair pass restored ${repaired} codeword${repaired===1?'':'s'} to baseline. Theoretical RS usage is now at/below the 

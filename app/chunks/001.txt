@@ -1,0 +1,47 @@
+g,#0f7047,#095132);border-color:#208a60}.inlineCheck{display:flex;flex-direction:row;align-items:center;gap:7px;text-transform:none;letter-spacing:0;color:#c7d4ed}.inlineCheck input{min-height:0;width:auto}.rangeRow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.rangeRow input{padding:0;min-height:32px}.meter{height:8px;background:#08101c;border:1px solid #26344f;border-radius:999px;overflow:hidden;margin-top:5px}.meter>i{display:block;height:100%;background:#3ee68a}.diagGrid{display:grid;gap:7px}.diagBlock{border:1px solid #2b3a57;border-radius:10px;padding:8px 9px;background:#0b1220}.diagBlock .head{display:flex;justify-content:space-between;gap:8px}.diagBlock.good{border-color:#245f48}.diagBlock.warn{border-color:#80661f}.diagBlock.bad{border-color:#8f3343;background:#201018}.tag{display:inline-flex;padding:2px 6px;border:1px solid #34455f;border-radius:999px;font-size:10px;color:#b9c8e5}.editLegend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#aebddb;margin-top:8px}.editLegend span{display:inline-flex;gap:5px;align-items:center}.mini{width:10px;height:10px;border-radius:2px;border:1px solid rgba(255,255,255,.3)}#targetFile{padding:7px}.decoderBox{min-height:90px}.labHint{border-left:3px solid #2d73ff;padding-left:9px;color:#aebddb;font-size:12px;margin-top:9px}
+@media(max-width:1050px){.controls{grid-template-columns:1fr 1fr 1fr}.controls label:first-child{grid-column:1/-1}main{grid-template-columns:1fr}.canvasWrap canvas{max-height:none}.status{grid-template-columns:1fr 1fr}}@media(max-width:620px){.controls{grid-template-columns:1fr}.status{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>QR Structure Navigator</h1>
+  <div class="subtitle">Inspect QR structure, paint modules, overlay target art, measure per-block Reed–Solomon damage, and repair toward a configurable safety margin. Pad modes make the otherwise-hidden excess-capacity texture visible; the new Pad Map overlay shows where those bits land.</div>
+  <div class="controls">
+    <label>Payload <input id="payload" spellcheck="false" value="QRCD.CO/DKDINE" /></label>
+    <label>Mode <select id="mode"><option value="auto">auto</option><option value="alphanumeric">alphanumeric</option><option value="byte">byte / UTF-8</option><option value="numeric">numeric</option></select></label>
+    <label>ECC <select id="ecc"><option>L</option><option>M</option><option>Q</option><option selected>H</option></select></label>
+    <label>Version <select id="version"><option value="auto">auto / compact</option></select></label>
+    <label>Mask <select id="mask"><option value="auto">auto</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></label>
+    <label>Pad Bytes <select id="padMode"><option value="spec" selected>spec EC/11</option><option value="zero">all 00</option><option value="one">all FF</option><option value="random">pseudo-random</option></select></label>
+    <label>Overlay <select id="overlay"><option value="normal">normal QR</option><option value="blocks" selected>RS block map</option><option value="function">function/data map</option><option value="stream">codeword stream</option><option value="pad">pad / payload map</option></select></label>
+    <button id="regen">Generate</button>
+  </div>
+</header>
+<main>
+  <section class="panel canvasPanel">
+    <div class="canvasWrap"><canvas id="qrCanvas" width="1100" height="1100" aria-label="QR matrix"></canvas></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#ff4d2e"></i>exact selected character bits</span>
+      <span><i class="dot" style="background:#ffb020"></i>data codeword(s)</span>
+      <span><i class="dot" style="background:#2d73ff"></i>dependent ECC parity</span>
+      <span><i class="dot" style="background:#6b778d"></i>function modules</span>
+    </div>
+    <div class="status" id="status"></div>
+    <div id="errorBox"></div>
+  </section>
+  <aside class="panel side">
+    <div class="section">
+      <h2>Payload characters</h2>
+      <div id="charBar" class="charBar"></div>
+      <p class="help">Alphanumeric mode packs two characters into one 11-bit symbol, so clicking either character highlights the shared pair. Byte mode is cleaner: one ASCII char usually maps to one 8-bit byte.</p>
+    </div>
+    <div class="section">
+      <h2>Reed–Solomon blocks</h2>
+      <div id="blockGrid" class="blockGrid"></div>
+      <p class="help">Force a larger version, like v4/H or v5/H, to make the interleaving visually obvious. Auto/minimal versions can have just one block.</p>
+    </div>
+    <div class="section">
+      <h2>Art lab · physical overrides</h2>
+      <div class="toolGrid">
+        <label>Edit mode <select id="editMode"><option value="inspect">inspect only</option><option value="toggle">toggle module</option><option value="dark">paint dark</option><option value="light">paint light</option></select></label>
+        <la

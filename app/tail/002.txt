@@ -1,0 +1,53 @@
+n;r++){
+      if(modules[r][c]===prev) same++;
+      else { if(same>=5) lost += same - 2; same=1; prev=modules[r][c]; }
+    }
+    if(same>=5) lost += same - 2;
+  }
+  for(let r=0;r<n-1;r++) for(let c=0;c<n-1;c++){
+    const v=modules[r][c]; if(modules[r+1][c]===v && modules[r][c+1]===v && modules[r+1][c+1]===v) lost += 3;
+  }
+  const pattern1 = [1,0,1,1,1,0,1,0,0,0,0];
+  const pattern2 = [0,0,0,0,1,0,1,1,1,0,1];
+  function checkLine(arr){
+    let p=0;
+    for(let i=0;i<=arr.length-11;i++){
+      let m1=true,m2=true;
+      for(let k=0;k<11;k++){
+        if((arr[i+k]?1:0)!==pattern1[k]) m1=false;
+        if((arr[i+k]?1:0)!==pattern2[k]) m2=false;
+      }
+      if(m1 || m2) p += 40;
+    }
+    return p;
+  }
+  for(let r=0;r<n;r++) lost += checkLine(modules[r]);
+  for(let c=0;c<n;c++) lost += checkLine(Array.from({length:n},(_,r)=>modules[r][c]));
+  let dark=0; for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(modules[r][c]) dark++;
+  const percent = dark/(n*n)*100;
+  lost += Math.floor(Math.abs(percent-50)/5)*10;
+  return lost;
+}
+function buildMatrix(version, ecc, stream, maskPattern){
+  const {modules, meta} = setupBaseMatrix(version, ecc, maskPattern);
+  const maps = mapData(modules, meta, stream, maskPattern);
+  const penalty = lostPoint(modules);
+  return {modules, meta, penalty, ...maps};
+}
+function buildQR(payload, options={}){
+  const requestedMode = options.mode || 'auto';
+  const ecc = options.ecc || 'H';
+  const padMode = options.padMode || 'spec';
+  const mode = modeValueFromName(requestedMode, payload);
+  let version = options.version || 'auto';
+  if(version === 'auto'){
+    let found = null;
+    for(let v=1; v<=40; v++){
+      try { createInterleavedCodewords(payload, mode, v, ecc, padMode); found = v; break; }
+      catch(e) { /* try next */ }
+    }
+    if(!found) throw new Error('Payload does not fit in version 40 with selected ECC/mode.');
+    version = found;
+  } else {
+    version = Number(version);
+    if(version < 1 || version > 40) throw new Error('Version

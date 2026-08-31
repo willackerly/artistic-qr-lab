@@ -1,0 +1,29 @@
+selected per-block target; run Decode Current QR for an empirical browser check.`;
+  renderAll();
+}
+function targetGridEmpty(n){ return {size:n,dark:Array.from({length:n},()=>Array(n).fill(false)),active:Array.from({length:n},()=>Array(n).fill(false)),weight:Array.from({length:n},()=>Array(n).fill(1)),label:''}; }
+function makeSmileyTarget(){
+  const q=state.qr; if(!q) return;
+  const n=q.size,t=targetGridEmpty(n), cx=(n-1)/2,cy=(n-1)/2,R=n*.29, thick=Math.max(1,n*.026);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const x=c-cx,y=r-cy,d=Math.hypot(x,y); const inBox=Math.abs(x)<=R*1.12 && Math.abs(y)<=R*1.12;
+    if(!inBox) continue; t.active[r][c]=true;
+    const ring=Math.abs(d-R)<thick;
+    const eyeR=Math.max(1,n*.035); const ey=-R*.26, ex=R*.34;
+    const eye=(Math.hypot(x-ex,y-ey)<eyeR)||(Math.hypot(x+ex,y-ey)<eyeR);
+    const mouthR=R*.56; const md=Math.abs(Math.hypot(x,y+R*.02)-mouthR)<thick*.85; const mouth=md && y>R*.12 && Math.abs(x)<R*.53;
+    t.dark[r][c]=ring||eye||mouth; t.weight[r][c]=(ring||eye||mouth)?1:.55;
+  }
+  t.label='center smiley'; state.target=t; renderAll();
+}
+function mapTargetImage(img){
+  const q=state.qr; if(!q) return;
+  const n=q.size,t=targetGridEmpty(n), frac=.72, span=Math.max(1,Math.floor(n*frac)), start=Math.floor((n-span)/2);
+  const cv=document.createElement('canvas'); cv.width=span; cv.height=span; const ctx=cv.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,span,span);
+  const scale=Math.min(span/img.width,span/img.height),w=img.width*scale,h=img.height*scale,x=(span-w)/2,y=(span-h)/2;
+  ctx.drawImage(img,x,y,w,h); const data=ctx.getImageData(0,0,span,span).data,thr=Number(els.targetThreshold.value);
+  for(let rr=0;rr<span;rr++) for(let cc=0;cc<span;cc++){
+    const i=(rr*span+cc)*4, a=data[i+3]/255; if(a<.05) continue;
+    const lum=.2126*data[i]+.7152*data[i+1]+.0722*data[i+2], r=start+rr,c=start+cc;
+    t.active[r][c]=true; t.dark[r][c]=lum<thr; t.weight[r][c]=Math.min(1,Math.abs(lum

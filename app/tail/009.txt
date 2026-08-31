@@ -1,0 +1,31 @@
+-thr)/Math.max(thr,255-thr)+.2);
+  }
+  t.label='uploaded image'; state.target=t; renderAll();
+}
+async function loadTargetFile(file){
+  if(!file) return; const url=URL.createObjectURL(file); const img=new Image();
+  img.onload=()=>{state.targetImage=img;mapTargetImage(img);URL.revokeObjectURL(url);}; img.onerror=()=>URL.revokeObjectURL(url); img.src=url;
+}
+function applyTarget(){
+  const q=state.qr,t=state.target;if(!q||!t||t.size!==q.size){els.decoderResults.textContent='Create or load a target image first.';return;}
+  const darkOnly=els.targetApplyMode.value==='darkOnly'; let touched=0;
+  for(let r=0;r<q.size;r++) for(let c=0;c<q.size;c++){
+    if(!t.active[r][c]) continue; const m=q.meta[r][c]; if(!m||m.kind==='function') continue;
+    if(darkOnly && !t.dark[r][c]) continue;
+    setOverride(r,c,t.dark[r][c]); touched++;
+  }
+  els.decoderResults.textContent=`Applied target to ${touched} editable module positions. This is deliberate post-encode corruption; integrity diagnostics show the resulting codeword cost.`;
+  renderAll();
+}
+function cleanCanvas(modulePx=12){
+  const q=state.qr, margin=4, cv=document.createElement('canvas'); cv.width=(q.size+8)*modulePx; cv.height=cv.width; const ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);ctx.fillStyle='#000';
+  for(let r=0;r<q.size;r++) for(let c=0;c<q.size;c++) if(currentDark(r,c)) ctx.fillRect((c+margin)*modulePx,(r+margin)*modulePx,modulePx,modulePx);
+  return cv;
+}
+async function decodeCurrent(){
+  if(!state.qr) return;
+  const a=analysisOfEdits();
+  if(!('BarcodeDetector' in window)){els.decoderResults.textContent=`BarcodeDetector is unavailable in this browser. Structural diagnostics still show ${a.streams.size} changed codewords. Chrome/Edge builds with BarcodeDetector support can run the live decode here; ZXing/jsQR adapters are on the repo roadmap.`;return;}
+  try{
+    const formats=await BarcodeDetector.getSupportedFormats(); if(!formats.includes('qr_code')) throw new Error('

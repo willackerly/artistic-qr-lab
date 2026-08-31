@@ -1,0 +1,51 @@
+      if(byteIndex < stream.length){
+            cw = stream[byteIndex];
+            bit = (cw.value >> bitIndex) & 1;
+            kind = cw.kind;
+          }
+          const maskApplied = maskFunc(maskPattern, row, c);
+          const dark = maskApplied ? !Boolean(bit) : Boolean(bit);
+          modules[row][c] = dark;
+          const m = {kind: kind === 'remainder' ? 'remainder' : 'codeword', codewordKind: kind, row, col:c,
+            finalDark:dark, unmaskedBit:bit, maskApplied, bitIndexInCodeword:bitIndex};
+          if(cw){
+            m.streamIndex = byteIndex;
+            m.blockId = cw.blockId;
+            m.indexInBlock = cw.indexInBlock;
+            m.value = cw.value;
+            if(cw.kind === 'data'){
+              m.rawDataCodewordIndex = cw.rawIndex;
+              m.source = cw.bitMetas[7-bitIndex]; // bit position 7,6... maps index 0,1...
+            } else {
+              m.source = {kind:'ecc', label:'Reed-Solomon parity byte'};
+            }
+            if(!modulePositionsByStream[byteIndex]) modulePositionsByStream[byteIndex] = [];
+            modulePositionsByStream[byteIndex].push({r:row,c});
+            if(!modulePositionsByBlock[cw.blockId]) modulePositionsByBlock[cw.blockId] = [];
+            modulePositionsByBlock[cw.blockId].push({r:row,c, streamIndex:byteIndex});
+          }
+          meta[row][c] = m;
+          bitIndex--;
+          if(bitIndex === -1){ byteIndex++; bitIndex = 7; }
+        }
+      }
+      row += inc;
+      if(row < 0 || row >= size){ row -= inc; inc = -inc; break; }
+    }
+  }
+  return {modulePositionsByStream, modulePositionsByBlock};
+}
+function lostPoint(modules){
+  const n = modules.length;
+  let lost=0;
+  for(let r=0;r<n;r++){
+    let same=1, prev=modules[r][0];
+    for(let c=1;c<n;c++){
+      if(modules[r][c]===prev) same++;
+      else { if(same>=5) lost += same - 2; same=1; prev=modules[r][c]; }
+    }
+    if(same>=5) lost += same - 2;
+  }
+  for(let c=0;c<n;c++){
+    let same=1, prev=modules[0][c];
+    for(let r=1;r<

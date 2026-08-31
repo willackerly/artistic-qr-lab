@@ -1,0 +1,32 @@
+qr_code format not supported');
+    const detector=new BarcodeDetector({formats:['qr_code']}), found=await detector.detect(cleanCanvas(16));
+    if(found.length){const vals=found.map(x=>x.rawValue||'(empty)').join('\n');els.decoderResults.textContent=`PASS · native BarcodeDetector\n\n${vals}\n\nExpected:\n${state.qr.payload}\n\nChanged codewords relative to generated baseline: ${a.streams.size}`;}
+    else els.decoderResults.textContent=`FAIL · native BarcodeDetector found no QR in the edited symbol.\n\nChanged codewords relative to generated baseline: ${a.streams.size}`;
+  }catch(e){els.decoderResults.textContent=`Decoder error: ${e.message||e}`;}
+}
+function exportCurrentPng(){ const cv=cleanCanvas(20); const a=document.createElement('a');a.download='artistic-qr.png';a.href=cv.toDataURL('image/png');a.click(); }
+
+function generate(){
+  els.errorBox.innerHTML = '';
+  try{
+    const payload = els.payload.value;
+    const qr = buildQR(payload, {mode:els.mode.value, ecc:els.ecc.value, version:els.version.value, mask:els.mask.value, padMode:els.padMode.value});
+    state.qr = qr; state.selection = null; state.edits = new Map();
+    if(state.target && state.target.size!==qr.size) state.target=null;
+    if(state.targetImage) mapTargetImage(state.targetImage);
+    renderAll();
+  }catch(e){
+    state.qr = null;
+    els.errorBox.innerHTML = `<div class="error">${esc(e.message || e)}</div>`;
+    els.status.innerHTML = ''; els.charBar.innerHTML=''; els.blockGrid.innerHTML=''; els.details.textContent='';
+    drawBlank();
+  }
+}
+function renderAll(){ renderStatus(); renderChars(); renderBlocks(); renderIntegrity(); updateDetails(); draw(); }
+function renderStatus(){
+  const q=state.qr; if(!q) return;
+  const blockText = `${q.blocks.length} block${q.blocks.length===1?'':'s'}`;
+  const maskScores = q.maskScores.map(x=>`${x.mask}:${x.penalty}`).join('  ');
+  els.status.innerHTML = `
+    <div class="pill"><b>QR</b><span>v${q.version} · ${q.size}×${q.size} modules</span></div>
+    <di

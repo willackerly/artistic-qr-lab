@@ -1,0 +1,22 @@
+de.blocks.map(b => {
+    const dataStreams = code.stream.filter(cw=>cw.kind==='data' && cw.blockId===b.id).map(cw=>cw.streamIndex);
+    const eccStreams = code.stream.filter(cw=>cw.kind==='ecc' && cw.blockId===b.id).map(cw=>cw.streamIndex);
+    return {id:b.id, dataCount:b.dataCount, eccCount:b.eccCount, totalCount:b.totalCount,
+      correctionCapacity: Math.floor(b.eccCount/2), dataStreams, eccStreams,
+      modules: matrix.modulePositionsByBlock[b.id] || []};
+  });
+  return {payload, mode, modeName:MODE_NAME[mode], ecc, version, size:version*4+17, mask, maskScores, padMode, padCodewordCount:code.padCodewordCount,
+    modules:matrix.modules, meta:matrix.meta, penalty:matrix.penalty, blocks:blockInfos,
+    stream:code.stream.map(cw=>({kind:cw.kind, value:cw.value, blockId:cw.blockId, indexInBlock:cw.indexInBlock, streamIndex:cw.streamIndex, rawIndex:cw.rawIndex})),
+    modulePositionsByStream:matrix.modulePositionsByStream, modulePositionsByBlock:matrix.modulePositionsByBlock,
+    charInfos, bitLimit:code.bitLimit, rawDataBits:code.rawDataBits };
+}
+
+
+const els = {
+  payload: document.getElementById('payload'), mode: document.getElementById('mode'), ecc: document.getElementById('ecc'),
+  version: document.getElementById('version'), mask: document.getElementById('mask'), padMode: document.getElementById('padMode'), overlay: document.getElementById('overlay'),
+  regen: document.getElementById('regen'), canvas: document.getElementById('qrCanvas'), status: document.getElementById('status'),
+  charBar: document.getElementById('charBar'), blockGrid: document.getElementById('blockGrid'), details: document.getElementById('details'), errorBox: document.getElementById('errorBox'),
+  editMode: document.getElementById('editMode'), targetApplyMode: document.getElementById('targetApplyMode'), targetFile: document.getElementById('targetFile'),
+  targetThreshold: document.getElementById('targetThreshold'), targetThresholdLabel: document.getElementById('targetThresholdLabel'), targe

@@ -1,0 +1,42 @@
+ must be 1..40.');
+  }
+  const code = createInterleavedCodewords(payload, mode, version, ecc, padMode);
+  let mask = options.mask;
+  let matrix;
+  let maskScores = [];
+  if(mask === undefined || mask === null || mask === 'auto'){
+    let best=null;
+    for(let m=0;m<8;m++){
+      const cand = buildMatrix(version, ecc, code.stream, m);
+      maskScores.push({mask:m, penalty:cand.penalty});
+      if(!best || cand.penalty < best.penalty) best = {mask:m, ...cand};
+    }
+    mask = best.mask; matrix = best;
+  } else {
+    mask = Number(mask);
+    matrix = buildMatrix(version, ecc, code.stream, mask);
+    maskScores = [{mask, penalty:matrix.penalty}];
+  }
+  const chars = Array.from(payload);
+  const charInfos = chars.map((ch,i)=>({index:i, char:ch, exactModules:[], dataStreamIndices:new Set(), blockIds:new Set(), eccStreamIndices:new Set()}));
+  // Exact payload bit modules + affected data codewords
+  for(let r=0;r<matrix.meta.length;r++) for(let c=0;c<matrix.meta.length;c++){
+    const m = matrix.meta[r][c];
+    if(m && m.kind === 'codeword' && m.codewordKind === 'data' && m.source && m.source.kind === 'payload'){
+      (m.source.charIndices || []).forEach(ci => {
+        if(charInfos[ci]){
+          charInfos[ci].exactModules.push({r,c, streamIndex:m.streamIndex, bitIndexInCodeword:m.bitIndexInCodeword});
+          charInfos[ci].dataStreamIndices.add(m.streamIndex);
+          charInfos[ci].blockIds.add(m.blockId);
+        }
+      });
+    }
+  }
+  // ECC dependencies: any character that touches a block affects all parity codewords for that block if re-encoded.
+  charInfos.forEach(info => {
+    code.stream.forEach(cw => { if(cw.kind === 'ecc' && info.blockIds.has(cw.blockId)) info.eccStreamIndices.add(cw.streamIndex); });
+    info.dataStreamIndices = Array.from(info.dataStreamIndices).sort((a,b)=>a-b);
+    info.blockIds = Array.from(info.blockIds).sort((a,b)=>a-b);
+    info.eccStreamIndices = Array.from(info.eccStreamIndices).sort((a,b)=>a-b);
+  });
+  const blockInfos = co

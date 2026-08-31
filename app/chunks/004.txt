@@ -1,0 +1,125 @@
+;
+  const chars = Array.from(payload);
+  if(chars.every(ch => ALPHA_NUM.indexOf(ch) >= 0)) return MODE.ALPHA;
+  return MODE.BYTE;
+}
+function validateModePayload(mode, payload){
+  const chars = Array.from(payload);
+  if(mode === MODE.NUMERIC && !/^\d*$/.test(payload)) throw new Error('Numeric mode only supports digits 0-9.');
+  if(mode === MODE.ALPHA && !chars.every(ch => ALPHA_NUM.indexOf(ch) >= 0)) throw new Error('Alphanumeric mode supports only: ' + ALPHA_NUM);
+}
+function payloadUnits(mode, payload){
+  const chars = Array.from(payload);
+  if(mode === MODE.BYTE){
+    const enc = new TextEncoder();
+    const bytes = [];
+    chars.forEach((ch, charIndex) => {
+      const bs = Array.from(enc.encode(ch));
+      bs.forEach((b, localByte) => bytes.push({value:b, charIndex, char:ch, localByte}));
+    });
+    return {chars, bytes, length: bytes.length};
+  }
+  return {chars, length: chars.length};
+}
+class BitBuffer {
+  constructor(){ this.bits=[]; this.metas=[]; }
+  put(num, length, meta){
+    for(let i=0;i<length;i++){
+      const bit = ((num >>> (length - i - 1)) & 1) ? 1 : 0;
+      this.putBit(bit, typeof meta === 'function' ? meta(i, bit) : meta);
+    }
+  }
+  putBit(bit, meta){ this.bits.push(bit?1:0); this.metas.push(Object.assign({}, meta || {})); }
+  get length(){ return this.bits.length; }
+  toBytes(){
+    const out = [];
+    for(let i=0;i<this.bits.length;i+=8){
+      let v=0;
+      for(let j=0;j<8;j++) v = (v<<1) | (this.bits[i+j] || 0);
+      out.push(v);
+    }
+    return out;
+  }
+}
+function rsBlocks(version, ecc){
+  const info = EC_INFO[ecc];
+  const entry = RS_BLOCK_TABLE[(version-1)*4 + info.tableOffset];
+  const blocks=[];
+  let id=0;
+  for(let i=0;i<entry.length;i+=3){
+    const count=entry[i], totalCount=entry[i+1], dataCount=entry[i+2];
+    for(let j=0;j<count;j++) blocks.push({id:id++, totalCount, dataCount, eccCount:totalCount-dataCount});
+  }
+  return blocks;
+}
+function bitLimitFor(version,ecc){ return rsBlocks(version,ecc).reduce((s,b)=>s+b.dataCount*8,0); }
+function padByteFor(padIndex, padMode){
+  if(padMode === 'zero') return 0x00;
+  if(padMode === 'one') return 0xFF;
+  if(padMode === 'random'){
+    // Deterministic toy PRNG so visual comparisons are repeatable.
+    let x = (padIndex + 1) * 1103515245 + 12345;
+    x = (x ^ (x >>> 16)) >>> 0;
+    return x & 0xFF;
+  }
+  return padIndex % 2 === 0 ? PAD0 : PAD1;
+}
+function padModeLabel(padMode){
+  return padMode === 'zero' ? 'all 0x00 / experimental' :
+         padMode === 'one' ? 'all 0xFF / experimental' :
+         padMode === 'random' ? 'pseudo-random / experimental' :
+         'standard 0xEC/0x11';
+}
+function buildBitBuffer(payload, mode, version, ecc, padMode='spec'){
+  validateModePayload(mode, payload);
+  const units = payloadUnits(mode, payload);
+  const blocks = rsBlocks(version, ecc);
+  const bitLimit = blocks.reduce((s,b)=>s+b.dataCount*8,0);
+  const buf = new BitBuffer();
+  buf.put(mode, 4, {kind:'mode', label:'mode indicator'});
+  buf.put(units.length, lengthBits(mode, version), {kind:'length', label:'character count'});
+
+  if(mode === MODE.BYTE){
+    units.bytes.forEach((u, byteIndex) => {
+      buf.put(u.value, 8, (bitOffset, bit) => ({
+        kind:'payload', mode:'byte', charIndices:[u.charIndex], charIndex:u.charIndex,
+        char:u.char, byteIndex, localByte:u.localByte, bitOffsetInSymbol:bitOffset,
+        label:'payload byte'
+      }));
+    });
+  } else if(mode === MODE.ALPHA){
+    const chars = units.chars;
+    for(let i=0;i<chars.length;i+=2){
+      if(i+1 < chars.length){
+        const val = ALPHA_NUM.indexOf(chars[i])*45 + ALPHA_NUM.indexOf(chars[i+1]);
+        const ci = [i,i+1];
+        buf.put(val, 11, (bitOffset, bit) => ({
+          kind:'payload', mode:'alphanumeric', charIndices:ci, charPair: chars[i]+chars[i+1], pairStart:i,
+          bitOffsetInSymbol:bitOffset, label:'alphanumeric pair'
+        }));
+      } else {
+        const val = ALPHA_NUM.indexOf(chars[i]);
+        buf.put(val, 6, (bitOffset, bit) => ({
+          kind:'payload', mode:'alphanumeric', charIndices:[i], charPair: chars[i], pairStart:i,
+          bitOffsetInSymbol:bitOffset, label:'alphanumeric single'
+        }));
+      }
+    }
+  } else if(mode === MODE.NUMERIC){
+    const chars = units.chars;
+    for(let i=0;i<chars.length;i+=3){
+      const group = chars.slice(i,i+3).join('');
+      const len = group.length === 3 ? 10 : group.length === 2 ? 7 : 4;
+      const ci = [];
+      for(let k=0;k<group.length;k++) ci.push(i+k);
+      buf.put(parseInt(group || '0',10), len, (bitOffset, bit) => ({
+        kind:'payload', mode:'numeric', charIndices:ci, digitGroup:group, groupStart:i,
+        bitOffsetInSymbol:bitOffset, label:'numeric group'
+      }));
+    }
+  }
+
+  const rawDataBits = buf.length;
+  if(rawDataBits > bitLimit) throw new Error(`Code length overflow: ${rawDataBits} bits > ${bitLimit} available data bits for version ${version}-${ecc}.`);
+  const terminator = Math.min(bitLimit - buf.length, 4);
+  for(let i=0;i<terminator;i++) buf.putBit(0

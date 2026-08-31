@@ -1,0 +1,42 @@
+unt} · bad ${dmg}/${b.correctionCapacity}</div>`;
+    div.title = `Data ${b.dataCount}, ECC ${b.eccCount}, corrects about ${b.correctionCapacity} unknown bad codewords in this block`;
+    div.onclick = () => { state.selection={type:'block', id:b.id}; renderAll(); };
+    els.blockGrid.appendChild(div);
+  });
+}
+function drawBlank(){ const c=els.canvas, ctx=c.getContext('2d'); ctx.fillStyle='#f7f9ff'; ctx.fillRect(0,0,c.width,c.height); }
+function baseColorFor(m, dark, overlay){
+  if(!m) return '#fff';
+  if(overlay === 'blocks'){
+    if(m.kind === 'function') return dark ? '#111827' : '#eff3fb';
+    if(m.kind === 'remainder') return dark ? '#263245' : '#d9e1ef';
+    return blockColor(m.blockId, dark ? .95 : .30, dark ? 38 : 74);
+  }
+  if(overlay === 'function'){
+    if(m.kind === 'function'){
+      const map = {'finder':'#102a74','finder separator':'#eff3fb','timing':'#7c3aed','alignment':'#0f766e','format':'#b45309','version':'#be123c','dark module':'#111827'};
+      return dark ? (map[m.type] || '#111827') : '#f4f7fb';
+    }
+    if(m.kind === 'remainder') return dark ? '#64748b' : '#e8edf6';
+    return dark ? '#0b0f17' : '#ffffff';
+  }
+  if(overlay === 'stream'){
+    if(m.kind === 'function') return dark ? '#111827' : '#f2f5fa';
+    if(m.kind === 'remainder') return dark ? '#64748b' : '#e5e7eb';
+    return streamColor(m.streamIndex, dark ? .96 : .30, dark ? 38 : 76);
+  }
+  if(overlay === 'pad'){
+    if(m.kind === 'function') return dark ? '#172033' : '#eef2f8';
+    if(m.kind === 'remainder') return dark ? '#6b7280' : '#e5e7eb';
+    const sk=m.source?.kind;
+    if(sk==='pad-byte' || sk==='pad-zero') return dark ? '#143d8f' : '#cfe0ff';
+    if(m.codewordKind==='ecc') return dark ? '#592c83' : '#eadcff';
+    return dark ? '#0b0f17' : '#fff';
+  }
+  // normal
+  if(m.kind === 'function') return dark ? '#06133d' : '#f6f8fc';
+  return dark ? '#0a0d13' : '#ffffff';
+}
+function getHighlightSets(){
+  const q=state.qr; const sel=state.selection;
+  const sets = {exact:new Set(), d

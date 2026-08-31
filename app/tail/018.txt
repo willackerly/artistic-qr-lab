@@ -1,0 +1,14 @@
+hold.value;if(state.targetImage)mapTargetImage(state.targetImage);});
+els.showTarget.addEventListener('change',draw);
+els.targetFile.addEventListener('change',()=>loadTargetFile(els.targetFile.files?.[0]));
+els.smiley.addEventListener('click',makeSmileyTarget);
+els.applyTarget.addEventListener('click',applyTarget);
+els.repair.addEventListener('click',intelligentRepair);
+els.clearEdits.addEventListener('click',()=>{state.edits=new Map();els.decoderResults.textContent='Physical overrides cleared; back to the generated baseline.';renderAll();});
+els.decode.addEventListener('click',decodeCurrent);
+els.exportPng.addEventListener('click',exportCurrentPng);
+window.addEventListener('resize', draw);
+generate();
+</script>
+</body>
+</html>

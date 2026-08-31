@@ -1,0 +1,20 @@
+tOpacity: document.getElementById('targetOpacity'), targetOpacityLabel: document.getElementById('targetOpacityLabel'),
+  repairBudget: document.getElementById('repairBudget'), repairBudgetLabel: document.getElementById('repairBudgetLabel'), showTarget: document.getElementById('showTarget'),
+  smiley: document.getElementById('smiley'), applyTarget: document.getElementById('applyTarget'), repair: document.getElementById('repair'), clearEdits: document.getElementById('clearEdits'), decode: document.getElementById('decode'), exportPng: document.getElementById('exportPng'),
+  integrity: document.getElementById('integrity'), decoderResults: document.getElementById('decoderResults')
+};
+for(let i=1;i<=40;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=(i===5?'5  · demo default':String(i)); els.version.appendChild(o); }
+els.version.value = '5';
+let state = { qr:null, selection:null, geom:null, edits:new Map(), target:null, targetImage:null, decoderText:'' };
+function esc(s){ return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function fmtList(arr, max=26){ if(!arr || !arr.length) return '—'; return arr.length>max ? arr.slice(0,max).join(', ') + ` … +${arr.length-max}` : arr.join(', '); }
+function key(r,c){ return r+','+c; }
+function blockColor(id, alpha=1, lightness=null){ const hue = (id * 137.508) % 360; const l = lightness===null ? 52 : lightness; return `hsla(${hue},78%,${l}%,${alpha})`; }
+function streamColor(i, alpha=1, lightness=null){ const hue = (i * 47) % 360; const l = lightness===null ? 50 : lightness; return `hsla(${hue},70%,${l}%,${alpha})`; }
+function sourceText(src){
+  if(!src) return '—';
+  if(src.kind === 'payload'){
+    let extra = '';
+    if(src.mode === 'alphanumeric') extra = ` pair="${src.charPair}" pairStart=${src.pairStart}`;
+    if(src.mode === 'numeric') extra = ` group="${src.digitGroup}" groupStart=${src.groupStart}`;
+    if(src.mode === 'byte') extra =

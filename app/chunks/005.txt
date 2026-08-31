@@ -1,0 +1,117 @@
+, {kind:'terminator', label:'terminator'});
+  const delimit = buf.length % 8;
+  if(delimit){ for(let i=0;i<8-delimit;i++) buf.putBit(0, {kind:'pad-zero', label:'byte alignment zero'}); }
+  let padIndex = 0;
+  while(buf.length < bitLimit){
+    const pad = padByteFor(padIndex, padMode);
+    buf.put(pad, 8, {kind:'pad-byte', label:'pad byte ' + pad.toString(16).toUpperCase().padStart(2,'0'), padByte:pad, padIndex, padMode});
+    padIndex++;
+  }
+  return {buf, units, blocks, bitLimit, rawDataBits, padCodewordCount: padIndex, padMode};
+}
+function createInterleavedCodewords(payload, mode, version, ecc, padMode='spec'){
+  const {buf, units, blocks, bitLimit, rawDataBits, padCodewordCount} = buildBitBuffer(payload, mode, version, ecc, padMode);
+  const bytes = buf.toBytes();
+  const dataCodewords = bytes.map((value, rawIndex) => {
+    const bitMetas=[];
+    for(let b=0;b<8;b++) bitMetas.push(Object.assign({rawBitIndex: rawIndex*8+b, rawDataCodewordIndex:rawIndex, bitIndexInCodeword:7-b}, buf.metas[rawIndex*8+b] || {}));
+    return {kind:'data', value, rawIndex, bitMetas, blockId:null, indexInBlock:null, streamIndex:null};
+  });
+  let offset=0;
+  blocks.forEach(block => {
+    block.data = [];
+    for(let i=0;i<block.dataCount;i++){
+      const cw = dataCodewords[offset+i];
+      cw.blockId = block.id;
+      cw.indexInBlock = i;
+      block.data.push(cw);
+    }
+    offset += block.dataCount;
+    const eccBytes = rsEncode(block.data.map(cw=>cw.value), block.eccCount);
+    block.ecc = eccBytes.map((value, i) => ({kind:'ecc', value, blockId:block.id, indexInBlock:i, streamIndex:null, bitMetas:[]}));
+  });
+  const maxDc = Math.max(...blocks.map(b=>b.data.length));
+  const maxEc = Math.max(...blocks.map(b=>b.ecc.length));
+  const stream=[];
+  for(let i=0;i<maxDc;i++){
+    blocks.forEach(b => { if(i < b.data.length) stream.push(b.data[i]); });
+  }
+  for(let i=0;i<maxEc;i++){
+    blocks.forEach(b => { if(i < b.ecc.length) stream.push(b.ecc[i]); });
+  }
+  stream.forEach((cw,i)=>{ cw.streamIndex=i; });
+  return {blocks, stream, dataCodewords, buf, units, bitLimit, rawDataBits, padCodewordCount, padMode};
+}
+function BCH_digit(data){ let digit=0; while(data!==0){ digit++; data >>>= 1; } return digit; }
+const G15 = 1335, G18 = 7973, G15_MASK = 21522;
+function BCH_type_info(data){
+  let d = data << 10;
+  while(BCH_digit(d) - BCH_digit(G15) >= 0) d ^= G15 << (BCH_digit(d) - BCH_digit(G15));
+  return ((data << 10) | d) ^ G15_MASK;
+}
+function BCH_type_number(data){
+  let d = data << 12;
+  while(BCH_digit(d) - BCH_digit(G18) >= 0) d ^= G18 << (BCH_digit(d) - BCH_digit(G18));
+  return (data << 12) | d;
+}
+function makeGrid(size, value=null){ return Array.from({length:size}, () => Array(size).fill(value)); }
+function setFunc(modules, meta, r, c, val, type){
+  if(r<0 || c<0 || r>=modules.length || c>=modules.length) return;
+  modules[r][c] = !!val;
+  meta[r][c] = {kind:'function', type, finalDark:!!val};
+}
+function setupPositionProbe(modules, meta, row, col){
+  const size = modules.length;
+  for(let r=-1;r<=7;r++){
+    if(row+r < 0 || row+r >= size) continue;
+    for(let c=-1;c<=7;c++){
+      if(col+c < 0 || col+c >= size) continue;
+      const dark = ((0 <= r && r <= 6 && (c === 0 || c === 6)) ||
+                    (0 <= c && c <= 6 && (r === 0 || r === 6)) ||
+                    (2 <= r && r <= 4 && 2 <= c && c <= 4));
+      const type = (r>=0 && r<=6 && c>=0 && c<=6) ? 'finder' : 'finder separator';
+      setFunc(modules, meta, row+r, col+c, dark, type);
+    }
+  }
+}
+function setupAlignment(modules, meta, version){
+  const pos = PATTERN_POSITION_TABLE[version-1];
+  for(let i=0;i<pos.length;i++){
+    const row = pos[i];
+    for(let j=0;j<pos.length;j++){
+      const col = pos[j];
+      if(modules[row][col] !== null) continue;
+      for(let r=-2;r<=2;r++){
+        for(let c=-2;c<=2;c++){
+          const dark = (r === -2 || r === 2 || c === -2 || c === 2 || (r === 0 && c === 0));
+          setFunc(modules, meta, row+r, col+c, dark, 'alignment');
+        }
+      }
+    }
+  }
+}
+function setupTiming(modules, meta){
+  const size = modules.length;
+  for(let r=8;r<size-8;r++){
+    if(modules[r][6] !== null) continue;
+    setFunc(modules, meta, r, 6, r%2===0, 'timing');
+  }
+  for(let c=8;c<size-8;c++){
+    if(modules[6][c] !== null) continue;
+    setFunc(modules, meta, 6, c, c%2===0, 'timing');
+  }
+}
+function setupTypeInfo(modules, meta, ecc, maskPattern){
+  const size = modules.length;
+  const data = (EC_INFO[ecc].formatBits << 3) | maskPattern;
+  const bits = BCH_type_info(data);
+  for(let i=0;i<15;i++){
+    const mod = ((bits >> i) & 1) === 1;
+    if(i < 6) setFunc(modules, meta, i, 8, mod, 'format');
+    else if(i < 8) setFunc(modules, meta, i+1, 8, mod, 'format');
+    else setFunc(modules, meta, size - 15 + i, 8, mod, 'format');
+  }
+  for(let i=0;i<15;i++){
+    const mod = ((bits >> i) & 1) === 1;
+    if(i < 8) setFunc(modules, meta, 8, size - i - 1, mod, 'format');
+    else if(i < 9) setFunc(modules, meta, 8, 15 - i - 1 + 1, mod, 'format')

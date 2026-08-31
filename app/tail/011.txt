@@ -1,0 +1,28 @@
+v class="pill"><b>Mode / ECC</b><span>${q.modeName} · ${q.ecc} ${EC_INFO[q.ecc].nominal}</span></div>
+    <div class="pill"><b>Mask / penalty</b><span>${q.mask} · ${q.penalty}</span></div>
+    <div class="pill"><b>RS structure</b><span>${blockText} · ${q.stream.length} codewords</span></div>
+    <div class="pill"><b>Payload bits</b><span>${q.rawDataBits} before terminator/pad</span></div>
+    <div class="pill"><b>Pad bytes</b><span>${q.padCodewordCount} · ${esc(padModeLabel(q.padMode))}</span></div>
+    <div class="pill"><b>Data capacity</b><span>${q.bitLimit} bits</span></div>
+    <div class="pill"><b>Overlay</b><span>${els.overlay.options[els.overlay.selectedIndex].text}</span></div>`;
+}
+function renderChars(){
+  const q=state.qr; if(!q) return;
+  els.charBar.innerHTML = '';
+  q.charInfos.forEach(info => {
+    const sp = document.createElement('button'); sp.className='char'; sp.type='button';
+    if(state.selection && state.selection.type==='char' && state.selection.index===info.index) sp.classList.add('selected');
+    sp.innerHTML = `${esc(info.char===' ' ? '␠' : info.char)}<small>${info.index}</small>`;
+    sp.title = `char #${info.index}; blocks ${info.blockIds.join(', ') || 'none'}`;
+    sp.onclick = () => { state.selection={type:'char', index:info.index}; renderAll(); };
+    els.charBar.appendChild(sp);
+  });
+}
+function renderBlocks(){
+  const q=state.qr; if(!q) return;
+  els.blockGrid.innerHTML = '';
+  q.blocks.forEach(b => {
+    const div = document.createElement('button'); div.type='button'; div.className='blockBtn';
+    if(state.selection && state.selection.type==='block' && state.selection.id===b.id) div.classList.add('selected');
+    const dmg=(analysisOfEdits().byBlock.get(b.id)?.all.size)||0;
+    div.innerHTML = `<span class="swatch" style="background:${blockColor(b.id,.95,45)}"></span><div><strong>Block ${b.id}</strong>d${b.dataCount} / e${b.eccCo

@@ -1,0 +1,15 @@
+(sel.type==='block'){
+    const b=q.blocks.find(x=>x.id===sel.id);
+    els.details.textContent = `RS Block ${b.id}\nData codewords: ${b.dataCount}\nECC codewords:  ${b.eccCount}\nTotal codewords:${b.totalCount}\nTheoretical unknown-error correction capacity: floor(${b.eccCount}/2) = ${b.correctionCapacity} bad codewords in this block\n\nData stream indices:\n${fmtList(b.dataStreams,80)}\n\nECC stream indices:\n${fmtList(b.eccStreams,80)}\n\nPhysical modules in this block: ${b.modules.length}\n\nBecause QR interleaves codewords before placing bits, these modules are deliberately scattered along the zig-zag path instead of forming a neat rectangle. That scattering is your friend for scratches, and your tiny administrative nightmare for artwork.`;
+    return;
+  }
+  if(sel.type==='module'){
+    const m=q.meta[sel.r][sel.c];
+    if(!m){ els.details.textContent=`Module (${sel.r}, ${sel.c}) is outside data?`; return; }
+    if(m.kind==='function'){
+      els.details.textContent = `Module (${sel.r}, ${sel.c})\nRole: function / ${m.type}\nFinal value: ${m.finalDark ? 'dark' : 'light'}\n\nFunction modules are the sacred anatomy: finders, separators, timing, alignment, format/version information, and the fixed dark module. ECC does not save you if detection/sampling dies before RS decoding.`;
+    } else if(m.kind==='remainder'){
+      els.details.textContent = `Module (${sel.r}, ${sel.c})\nRole: remainder bit\nFinal value: ${m.finalDark ? 'dark' : 'light'}\nUnmasked bit: ${m.unmaskedBit}\nMask applied: ${m.maskApplied}\n\nRemainder bits are fixed filler bits after the final codeword stream. They are not payload or ECC codewords.`;
+    } else {
+      const cw=q.stream[m.streamIndex];
+      els.details.textContent = `Module (${sel.r}, ${sel.c})\nRole: ${m.codewordKind} codeword bit\nFinal value: ${m.finalDark ? 'dark' : 'light'}\nUnmasked bit: ${m.unmaskedBit}\nMask applied here: ${m.maskApplied}\n\nStream codeword index: ${m.streamIndex}\nCodeword value: 0x${m.value.toString(16)

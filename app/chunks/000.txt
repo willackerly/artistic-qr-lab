@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QR Structure Navigator</title>
+<style>
+:root{
+  --bg:#080b12; --panel:#101725; --panel2:#141d30; --ink:#edf3ff; --muted:#9badc9;
+  --line:#26344f; --blue:#2d73ff; --blue2:#0b3caa; --orange:#ff9f1c; --hot:#ff4d2e;
+  --good:#3ee68a; --warn:#ffe066;
+}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0%,#18233a 0,#080b12 42%,#05070b 100%);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+header{padding:18px 22px;border-bottom:1px solid var(--line);background:rgba(8,11,18,.84);backdrop-filter:blur(12px);position:sticky;top:0;z-index:3}
+h1{font-size:22px;letter-spacing:.2px;margin:0 0 12px} .subtitle{color:var(--muted);font-size:13px;margin-top:-7px;margin-bottom:13px;max-width:1200px}
+.controls{display:grid;grid-template-columns: minmax(260px, 2fr) repeat(6, minmax(105px, .55fr)) auto;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+input,select,button{border:1px solid var(--line);background:#0c1322;color:var(--ink);border-radius:10px;padding:10px 11px;font:inherit;min-height:40px}
+input:focus,select:focus{outline:2px solid rgba(45,115,255,.5);outline-offset:1px} button{cursor:pointer;background:linear-gradient(180deg,#1c65ff,#174bc1);border-color:#2d73ff;font-weight:700} button.secondary{background:#101827;border-color:#34445f;color:#d8e5ff}
+main{display:grid;grid-template-columns:minmax(380px, 1.2fr) minmax(360px,.8fr);gap:16px;padding:16px;max-width:1550px;margin:0 auto}
+.panel{background:linear-gradient(180deg,rgba(18,27,45,.94),rgba(12,18,31,.94));border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 70px rgba(0,0,0,.35);overflow:hidden}
+.canvasPanel{padding:14px}.canvasWrap{background:#f7f9ff;border-radius:14px;padding:10px;border:1px solid #dbe3f5;position:relative}.canvasWrap canvas{display:block;width:100%;height:auto;max-height:calc(100vh - 210px);object-fit:contain;margin:auto;cursor:crosshair}
+.status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.pill{background:#0c1322;border:1px solid var(--line);border-radius:12px;padding:9px 10px}.pill b{display:block;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}.pill span{font-size:14px;color:#fff}
+.side{display:grid;gap:16px}.section{padding:14px 15px;border-bottom:1px solid var(--line)}.section:last-child{border-bottom:0} h2{font-size:15px;margin:0 0 10px;letter-spacing:.04em;text-transform:uppercase;color:#dfe9ff}.help{color:var(--muted);font-size:13px;margin:8px 0 0}.tiny{font-size:12px;color:#8da1c1}.charBar{display:flex;flex-wrap:wrap;gap:5px}.char{min-width:28px;height:30px;display:inline-grid;place-items:center;border:1px solid #2d3c59;background:#0c1322;border-radius:8px;color:#eaf1ff;cursor:pointer;position:relative}.char:hover{border-color:#5f83ff}.char.selected{background:#392012;border-color:#ff9f1c;color:#fff}.char small{position:absolute;top:-8px;right:-4px;color:#8fa3c3;font-size:9px;background:#101725;border-radius:5px;padding:0 3px}
+.blockGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:8px;max-height:260px;overflow:auto;padding-right:3px}.blockBtn{display:flex;gap:8px;align-items:center;border:1px solid #2d3c59;background:#0c1322;border-radius:10px;padding:8px;cursor:pointer}.blockBtn:hover{border-color:#5f83ff}.blockBtn.selected{outline:2px solid #ff9f1c;border-color:#ff9f1c}.swatch{width:18px;height:18px;border-radius:5px;border:1px solid rgba(255,255,255,.45);flex:0 0 auto}.blockBtn div{font-size:12px;color:#aebfde}.blockBtn strong{display:block;color:#fff;font-size:13px}.details{white-space:pre-wrap;background:#080d18;border:1px solid #26344f;border-radius:12px;padding:12px;color:#dbe7ff;min-height:170px;max-height:390px;overflow:auto;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.legend span{display:inline-flex;align-items:center;gap:6px;color:#b8c8e6;font-size:12px}.dot{width:12px;height:12px;border-radius:3px;display:inline-block}.footer{padding:12px 16px;color:#8da1c1;font-size:12px;border-top:1px solid var(--line);background:#0b111e}.error{color:#ffd2d2;background:#35151a;border:1px solid #7c2a35;padding:10px;border-radius:10px;margin-top:10px}
+
+.toolGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toolGrid .wide{grid-column:1/-1}.toolGrid label{font-size:11px}.toolRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.toolRow button{flex:1 1 140px}.toolRow button.warn{background:linear-gradient(180deg,#884b11,#603108);border-color:#a86119}.toolRow button.danger{background:linear-gradient(180deg,#8a2638,#611627);border-color:#b63850}.toolRow button.good{background:linear-gradient(180de

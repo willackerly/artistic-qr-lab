@@ -1,0 +1,29 @@
+.toUpperCase().padStart(2,'0')} (${m.value})\nBit index inside codeword: ${m.bitIndexInCodeword}  (7=MSB, 0=LSB)\nRS block: ${m.blockId}\nIndex inside block: ${m.indexInBlock}\nSource: ${sourceText(m.source)}\n\nClick the corresponding block in the block list to see the full spread.`;
+    }
+  }
+}
+function moduleFromEvent(ev){
+  if(!state.qr || !state.geom) return null;
+  const rect=els.canvas.getBoundingClientRect(); const scaleX=els.canvas.width/rect.width, scaleY=els.canvas.height/rect.height;
+  const x=(ev.clientX-rect.left)*scaleX, y=(ev.clientY-rect.top)*scaleY;
+  const {cell,ox,oy,margin}=state.geom;
+  const col=Math.floor((x-ox)/cell)-margin; const r=Math.floor((y-oy)/cell)-margin;
+  if(r<0 || col<0 || r>=state.qr.size || col>=state.qr.size) return null;
+  return {r,c:col};
+}
+els.canvas.addEventListener('click', ev => {
+  const p=moduleFromEvent(ev); if(!p) return;
+  const mode=els.editMode.value, m=state.qr.meta[p.r][p.c];
+  if(mode!=='inspect' && m && m.kind!=='function'){
+    const now=currentDark(p.r,p.c); const wanted=mode==='toggle'?!now:mode==='dark'; setOverride(p.r,p.c,wanted);
+  }
+  state.selection={type:'module', r:p.r, c:p.c}; renderAll();
+});
+els.regen.addEventListener('click', generate);
+[els.payload,els.mode,els.ecc,els.version,els.mask,els.padMode].forEach(el => el.addEventListener('keydown', ev=>{ if(ev.key==='Enter') generate(); }));
+[els.mode,els.ecc,els.version,els.mask,els.padMode].forEach(el => el.addEventListener('change', generate));
+els.overlay.addEventListener('change', () => { renderStatus(); draw(); });
+els.editMode.addEventListener('change',()=>draw());
+els.repairBudget.addEventListener('input',()=>{els.repairBudgetLabel.textContent=`${els.repairBudget.value}% of theoretical correction`;renderIntegrity();});
+els.targetOpacity.addEventListener('input',()=>{els.targetOpacityLabel.textContent=`${els.targetOpacity.value}%`;draw();});
+els.targetThreshold.addEventListener('input',()=>{els.targetThresholdLabel.textContent=els.targetThres

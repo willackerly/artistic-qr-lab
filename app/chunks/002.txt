@@ -1,0 +1,43 @@
+bel>Target source <select id="targetApplyMode"><option value="binary">B/W inside target region</option><option value="darkOnly">dark strokes only</option></select></label>
+        <label class="wide">Target image <input id="targetFile" type="file" accept="image/*" /></label>
+        <label>Threshold <div class="rangeRow"><input id="targetThreshold" type="range" min="1" max="254" value="150"/><span id="targetThresholdLabel">150</span></div></label>
+        <label>Target overlay <div class="rangeRow"><input id="targetOpacity" type="range" min="0" max="100" value="28"/><span id="targetOpacityLabel">28%</span></div></label>
+        <label class="wide">Intentional RS budget <div class="rangeRow"><input id="repairBudget" type="range" min="0" max="100" value="50"/><span id="repairBudgetLabel">50% of theoretical correction</span></div></label>
+      </div>
+      <div class="toolRow">
+        <button id="smiley" class="secondary">Make center smiley target</button>
+        <button id="applyTarget" class="warn">Force target into data area</button>
+        <button id="repair" class="good">Intelligent repair</button>
+        <button id="clearEdits" class="secondary">Clear overrides</button>
+        <button id="decode" class="secondary">Decode current QR</button>
+        <button id="exportPng" class="secondary">Export clean PNG</button>
+      </div>
+      <label class="inlineCheck"><input id="showTarget" type="checkbox" checked/> show target overlay</label>
+      <div class="editLegend"><span><i class="mini" style="background:#9b5cff"></i>target</span><span><i class="mini" style="background:#00e5a8"></i>physical override</span><span><i class="mini" style="background:#ff4d2e"></i>over-budget block</span></div>
+      <p class="labHint"><b>Important:</b> these edits are post-encode physical overrides. They intentionally create sampled-bit errors. “Intelligent repair” reverts the least visually expensive damaged codewords until each RS block is back under the selected budget. The planned valid-steering optimizer will instead search payload/suffix/pad variables and recompute ECC.</p>
+    </div>
+    <div class="section">
+      <h2>Integrity diagnostics</h2>
+      <div id="integrity" class="diagGrid"></div>
+      <div id="decoderResults" class="details decoderBox">Native browser decoder has not been run yet.</div>
+    </div>
+    <div class="section">
+      <h2>Selection details</h2>
+      <div id="details" class="details">Generate a QR, then click a character, block, or module.</div>
+    </div>
+    <div class="footer">Single-page QR art lab. Core generation is offline. Native BarcodeDetector decoding is used when the browser exposes it. Nonstandard pad modes recompute ECC and are deliberately experimental. RS diagnostics count changed codewords relative to the generated baseline; real camera margin remains an empirical property.</div>
+  </aside>
+</main>
+<script>
+
+const ALPHA_NUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+const MODE = { NUMERIC: 1, ALPHA: 2, BYTE: 4 };
+const MODE_NAME = {1:'numeric',2:'alphanumeric',4:'byte'};
+const PAD0 = 0xEC, PAD1 = 0x11;
+const EC_INFO = {
+  L: {label:'L', formatBits:1, tableOffset:0, nominal:'~7%'},
+  M: {label:'M', formatBits:0, tableOffset:1, nominal:'~15%'},
+  Q: {label:'Q', formatBits:3, tableOffset:2, nominal:'~25%'},
+  H: {label:'H', formatBits:2, tableOffset:3, nominal:'~30%'}
+};
+const RS_BLOCK_TABLE = [[1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9], [1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16], [1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13], [1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9], [1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12], [2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15], [2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14], [2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15], [2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13], [2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16], [4, 101, 81], [1, 80, 50, 4, 81, 51], [4, 50, 22, 4, 51, 23], [3, 36, 12, 8, 37, 13], [2, 116, 92, 2, 117, 93], [6, 58, 36, 2, 59, 37], [4, 46, 20, 6, 47, 21], [7, 42, 14, 4, 43, 15], [4, 133, 107], [8, 59, 37, 1, 60, 38], [8, 44, 20, 4, 45, 21], [12, 33, 11, 4, 34, 12], [3, 145, 115, 1, 146, 116], [4, 64, 40, 5, 65, 41], [11, 36, 16, 5, 37, 17], [11, 36, 12, 5, 37, 13], [5, 109, 87, 1, 110, 88], [5, 65, 41, 5, 66, 42], [5, 54, 24, 7, 55, 25], [11, 36, 12, 7, 37, 13], [5, 122, 98, 1, 123, 99], [7, 73, 45, 3, 74, 46], [15, 43, 19, 2, 44, 20], [3, 45, 15, 13, 46, 16], [1, 135, 107, 5, 136, 108], [10, 74, 46, 1, 75, 47], [1, 50, 22, 15, 51, 23], [2, 42, 14, 17, 43, 15], [5, 150, 120, 1, 151, 121], [9, 69, 43, 4, 70, 44], [17, 50, 22, 1, 51, 23], [2, 42, 14, 19, 43, 15], [3, 141, 113, 4, 142, 114], [3, 70, 44, 11, 71, 45], [17, 47, 21, 4, 48, 22], [9, 39, 13, 16, 40, 14], [3, 135, 107, 5, 136, 108], [3, 67, 41, 13, 6

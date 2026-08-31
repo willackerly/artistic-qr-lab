@@ -1,0 +1,45 @@
+ ` char="${src.char}" byteIndex=${src.byteIndex}`;
+    return `payload/${src.mode}${extra} chars=[${(src.charIndices||[]).join(',')}]`;
+  }
+  if(src.kind === 'ecc') return 'Reed–Solomon ECC parity bit';
+  return `${src.kind || 'unknown'} ${src.label || ''}`.trim();
+}
+
+function baselineDark(r,c){ return !!state.qr.modules[r][c]; }
+function currentDark(r,c){ const k=key(r,c); return state.edits.has(k) ? state.edits.get(k) : baselineDark(r,c); }
+function setOverride(r,c,dark){
+  const q=state.qr; if(!q) return false;
+  const m=q.meta[r][c];
+  if(!m || m.kind==='function') return false;
+  const k=key(r,c), b=baselineDark(r,c);
+  if(!!dark===b) state.edits.delete(k); else state.edits.set(k,!!dark);
+  return true;
+}
+function analysisOfEdits(){
+  const q=state.qr;
+  const byBlock=new Map(), streams=new Set(); let remainder=0, ignored=0;
+  if(!q) return {streams,byBlock,remainder,ignored,changedModules:0};
+  for(const [k,val] of state.edits){
+    const [r,c]=k.split(',').map(Number), m=q.meta[r]?.[c];
+    if(!m){ignored++;continue;}
+    if(m.kind==='codeword') streams.add(m.streamIndex);
+    else if(m.kind==='remainder') remainder++;
+    else ignored++;
+  }
+  for(const idx of streams){
+    const cw=q.stream[idx]; if(!cw) continue;
+    if(!byBlock.has(cw.blockId)) byBlock.set(cw.blockId,{all:new Set(),data:new Set(),ecc:new Set()});
+    const x=byBlock.get(cw.blockId); x.all.add(idx); x[cw.kind].add(idx);
+  }
+  return {streams,byBlock,remainder,ignored,changedModules:state.edits.size};
+}
+function renderIntegrity(){
+  const q=state.qr; if(!q){els.integrity.innerHTML=''; return;}
+  const a=analysisOfEdits(), frac=Number(els.repairBudget.value)/100;
+  const rows=[];
+  for(const b of q.blocks){
+    const x=a.byBlock.get(b.id) || {all:new Set(),data:new Set(),ecc:new Set()};
+    const n=x.all.size, cap=b.correctionCapacity, target=Math.floor(cap*frac), ratio=cap?Math.min(1,n/cap):0;
+    let cls=n>cap?'bad':(n>target?'warn':'good');
+    const pct=Math.round(ratio*100);
+    rows.pu

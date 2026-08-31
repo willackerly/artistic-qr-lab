@@ -1,0 +1,38 @@
+ata:new Set(), ecc:new Set(), block:new Set(), codeword:new Set(), module:null};
+  if(!q || !sel) return sets;
+  function addStream(set, idx){ (q.modulePositionsByStream[idx]||[]).forEach(p=>set.add(key(p.r,p.c))); }
+  if(sel.type==='char'){
+    const info=q.charInfos[sel.index];
+    if(info){
+      info.exactModules.forEach(p=>sets.exact.add(key(p.r,p.c)));
+      info.dataStreamIndices.forEach(idx=>addStream(sets.data, idx));
+      info.eccStreamIndices.forEach(idx=>addStream(sets.ecc, idx));
+    }
+  } else if(sel.type==='block'){
+    const b=q.blocks.find(x=>x.id===sel.id);
+    if(b) b.modules.forEach(p=>sets.block.add(key(p.r,p.c)));
+  } else if(sel.type==='module'){
+    sets.module = key(sel.r,sel.c);
+    const m=q.meta[sel.r][sel.c];
+    if(m && m.kind==='codeword') addStream(sets.codeword, m.streamIndex);
+    if(m && typeof m.blockId==='number') (q.modulePositionsByBlock[m.blockId]||[]).forEach(p=>sets.block.add(key(p.r,p.c)));
+  }
+  return sets;
+}
+function draw(){
+  const q=state.qr; if(!q){ drawBlank(); return; }
+  const c=els.canvas, ctx=c.getContext('2d');
+  const W=c.width, H=c.height; ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f9ff'; ctx.fillRect(0,0,W,H);
+  const margin=4, total=q.size+margin*2; const cell=Math.floor(Math.min(W,H)/total); const ox=Math.floor((W-cell*total)/2); const oy=Math.floor((H-cell*total)/2);
+  state.geom={cell,ox,oy,margin,total};
+  ctx.fillStyle='#ffffff'; ctx.fillRect(ox,oy,cell*total,cell*total);
+  const overlay=els.overlay.value;
+  for(let r=0;r<q.size;r++) for(let col=0;col<q.size;col++){
+    const m=q.meta[r][col]; const dark=currentDark(r,col);
+    ctx.fillStyle=baseColorFor(m,dark,overlay);
+    ctx.fillRect(ox+(col+margin)*cell, oy+(r+margin)*cell, cell, cell);
+  }
+  if(state.target && state.target.size===q.size && els.showTarget.checked){
+    const op=Number(els.targetOpacity.value)/100;
+    ctx.fillStyle=`rgba(155,92,255,${op})`;
+    for(let r=0;r<q.size;r++) for(let col=0;col<q.size;col++) if(state.target.active[r][col]

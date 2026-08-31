@@ -1,0 +1,21 @@
+ntent=''; return; }
+  if(!sel){
+    els.details.textContent = `No selection.\n\nClick a character: exact payload bits = orange, data codewords = amber, ECC parity codewords that depend on touched block(s) = blue.\n\nClick a block: all physical bit locations for that RS block are highlighted.\n\nClick a module: inspect its coordinate, function/data role, codeword, block, unmasked bit, and source.`;
+    return;
+  }
+  if(sel.type==='char'){
+    const info=q.charInfos[sel.index];
+    let modeNote='';
+    if(q.modeName==='alphanumeric'){
+      const start = Math.floor(info.index/2)*2; const pair = Array.from(q.payload).slice(start,start+2).join('');
+      modeNote = `\nAlphanumeric note: char #${info.index} is represented inside the shared 11-bit pair "${pair}". The highlighted exact bits are the pair's payload bits, not a clean per-character byte.`;
+    } else if(q.modeName==='numeric') {
+      const start = Math.floor(info.index/3)*3; const group = Array.from(q.payload).slice(start,start+3).join('');
+      modeNote = `\nNumeric note: digits are packed in groups; this char shares bits with group "${group}".`;
+    } else if(q.modeName==='byte') {
+      modeNote = `\nByte note: for ASCII, a character usually occupies one byte. Non-ASCII characters may occupy multiple UTF-8 bytes.`;
+    }
+    els.details.textContent = `Character #${info.index}: "${info.char}"\nMode: ${q.modeName}${modeNote}\n\nExact payload-bit modules: ${info.exactModules.length}\nData codeword stream index/indices touched: ${fmtList(info.dataStreamIndices)}\nAffected RS block(s): ${fmtList(info.blockIds)}\nDependent ECC parity codeword stream indices: ${fmtList(info.eccStreamIndices)}\n\nMeaning: if you mutate this character while keeping the same QR mode/length, the data codeword(s) above change directly. Reed–Solomon parity for every touched block is recomputed, so those ECC codewords are dependent too. If the string length or mode changes, all bets get delightfully more chaotic.`;
+    return;
+  }
+  if

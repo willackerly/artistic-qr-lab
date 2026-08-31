@@ -1,0 +1,60 @@
+;
+    else setFunc(modules, meta, 8, 15 - i - 1, mod, 'format');
+  }
+  setFunc(modules, meta, size-8, 8, true, 'dark module');
+}
+function setupTypeNumber(modules, meta, version){
+  if(version < 7) return;
+  const size = modules.length;
+  const bits = BCH_type_number(version);
+  for(let i=0;i<18;i++){
+    const mod = ((bits >> i) & 1) === 1;
+    setFunc(modules, meta, Math.floor(i/3), i%3 + size - 8 - 3, mod, 'version');
+  }
+  for(let i=0;i<18;i++){
+    const mod = ((bits >> i) & 1) === 1;
+    setFunc(modules, meta, i%3 + size - 8 - 3, Math.floor(i/3), mod, 'version');
+  }
+}
+function maskFunc(pattern, i, j){
+  switch(pattern){
+    case 0: return (i+j)%2===0;
+    case 1: return i%2===0;
+    case 2: return j%3===0;
+    case 3: return (i+j)%3===0;
+    case 4: return (Math.floor(i/2)+Math.floor(j/3))%2===0;
+    case 5: return ((i*j)%2 + (i*j)%3)===0;
+    case 6: return (((i*j)%2 + (i*j)%3)%2)===0;
+    case 7: return (((i*j)%3 + (i+j)%2)%2)===0;
+  }
+  throw new Error('Bad mask');
+}
+function setupBaseMatrix(version, ecc, maskPattern){
+  const size = version*4 + 17;
+  const modules = makeGrid(size, null);
+  const meta = Array.from({length:size}, () => Array(size).fill(null));
+  setupPositionProbe(modules, meta, 0, 0);
+  setupPositionProbe(modules, meta, size-7, 0);
+  setupPositionProbe(modules, meta, 0, size-7);
+  setupAlignment(modules, meta, version);
+  setupTiming(modules, meta);
+  setupTypeInfo(modules, meta, ecc, maskPattern);
+  setupTypeNumber(modules, meta, version);
+  return {modules, meta};
+}
+function mapData(modules, meta, stream, maskPattern){
+  const size = modules.length;
+  let inc = -1;
+  let row = size - 1;
+  let bitIndex = 7;
+  let byteIndex = 0;
+  const modulePositionsByStream = {};
+  const modulePositionsByBlock = {};
+  for(let colRaw=size-1; colRaw>0; colRaw-=2){
+    let col = colRaw;
+    if(col <= 6) col--;
+    while(true){
+      for(const c of [col, col-1]){
+        if(modules[row][c] === null){
+          let bit = 0, cw = null, kind = 'remainder';
+    
