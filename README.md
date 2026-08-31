@@ -42,6 +42,8 @@ The app currently supports:
 - click-through mapping from payload characters → codewords → RS blocks → physical modules;
 - direct module painting / post-encode overrides;
 - target image upload (mapped into the central 72% of the QR) and a built-in smiley target;
+- **budget-aware vector smiley auto-fit**: searches legal masks, maximizes face diameter, and spends the fewest high-value RS codewords needed to reach a configurable visual-fit floor without exceeding any block budget;
+- semantic art overlay + styled PNG export: target-matching dark modules render near-black while other scanner-dark modules render navy, exploiting human chroma perception without changing the logical matrix;
 - live accounting of changed modules → corrupted codewords → per-block theoretical RS utilization;
 - configurable intentional-error budget as a fraction of each block's theoretical correction capacity;
 - **Intelligent Repair V0**: greedily restores the least visually expensive damaged codewords until every block is under the selected budget;
@@ -112,6 +114,7 @@ If a block is within its correction radius, it should recover the original RS co
 - [`docs/INTELLIGENT_REPAIR.md`](docs/INTELLIGENT_REPAIR.md) — repair objectives and algorithms
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — implementation milestones
 - [`docs/QR_CODING_NOTES.md`](docs/QR_CODING_NOTES.md) — coding-theory notes and invariants
+- [`docs/VECTOR_TARGET_SOLVER.md`](docs/VECTOR_TARGET_SOLVER.md) — current smiley solver, objective function, and next-stage valid steering
 
 ## Status
 

@@ -9,6 +9,9 @@
 - [x] physical module editor
 - [x] target image upload
 - [x] built-in smiley target
+- [x] budget-aware vector smiley auto-fit (largest face → minimum RS-symbol spend)
+- [x] mask search during vector auto-fit
+- [x] semantic target-emphasis rendering + styled PNG export
 - [x] codeword-aware per-block damage accounting
 - [x] configurable intentional-error target
 - [x] Intelligent Repair V0
@@ -17,6 +20,8 @@
 
 ## V1.1 — Better experimental ergonomics
 
+- [ ] smiley Pareto explorer: diameter vs visual fit vs bad codewords vs module flips
+- [ ] vector target parameter controls (eye size, mouth geometry, ring thickness, center constraints)
 - [ ] brush drag / rectangle / lasso editing
 - [ ] undo/redo history
 - [ ] save/load session JSON
