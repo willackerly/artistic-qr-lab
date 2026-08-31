@@ -17,7 +17,7 @@
       return r.text();
     }));
     const core = parts.join('');
-    const patched = core.replace('</body>', '<script src="app/smiley-solver.js"></' + 'script></body>');
+    const patched = core.replace('</body>', '<script src="app/smiley-solver.js"></' + 'script><script src="app/scanner-aware.js"></' + 'script></body>');
     document.open(); document.write(patched); document.close();
   } catch (err) {
     document.getElementById('status').innerHTML = `<b>Could not load the lab.</b><p>${String(err)}</p><p>Serve this repository over HTTP, e.g. <code>python3 -m http.server 8080</code>, rather than opening index.html as a file.</p>`;
