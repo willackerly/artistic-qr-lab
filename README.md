@@ -37,13 +37,17 @@ The app currently supports:
 - QR generation for numeric, alphanumeric, and byte mode;
 - versions 1–40 and ECC levels L/M/Q/H;
 - explicit selection of all eight QR masks;
-- standard `EC/11` pad bytes plus experimental `00`, `FF`, and pseudo-random pads;
+- standard `EC/11` pad bytes plus experimental `00`, `FF`, pseudo-random, and optimized arbitrary post-terminator pads;
 - overlays for RS blocks, codeword stream, function/data anatomy, and **pad/payload mapping**;
 - click-through mapping from payload characters → codewords → RS blocks → physical modules;
 - direct module painting / post-encode overrides;
 - target image upload (mapped into the central 72% of the QR) and a built-in smiley target;
 - **budget-aware vector smiley auto-fit**: searches legal masks, maximizes face diameter, and spends the fewest high-value RS codewords needed to reach a configurable visual-fit floor without exceeding any block budget;
 - semantic art overlay + styled PNG export: target-matching dark modules render near-black while other scanner-dark modules render navy, exploiting human chroma perception without changing the logical matrix;
+- **valid free-pad steering**: treats full post-terminator pad bytes as experimental free variables, measures each free bit’s exact data+RS-parity influence field, and hill-climbs all eight masks toward the vector target without deliberate ECC damage;
+- **scanner-aware vector rendering**: draws smooth smiley geometry across module boundaries while deterministic light/dark center contracts protect logical sampling;
+- **jsQR/ZXing-style threshold surrogate**: models 8×8 local black points, 5×5 neighborhood thresholds, blur, center sampling, and maps predicted sample errors back to RS blocks;
+- scanner-aware SVG export for continuous curves instead of stair-stepped module-only art;
 - live accounting of changed modules → corrupted codewords → per-block theoretical RS utilization;
 - configurable intentional-error budget as a fraction of each block's theoretical correction capacity;
 - **Intelligent Repair V0**: greedily restores the least visually expensive damaged codewords until every block is under the selected budget;
@@ -67,16 +71,17 @@ Use **Pad / payload map** to see where those pad-derived bits actually land. The
 
 ## Important distinction: valid steering vs physical damage
 
-The UI currently exposes **physical overrides**. A painted module is changed *after* the valid QR was generated, so if the sampled bit changes it consumes RS correction margin.
+The UI exposes **physical overrides**. A painted module is changed *after* the valid QR was generated, so if the sampled bit changes it consumes RS correction margin.
 
-The more powerful roadmap path is **valid steering**:
+The preferred pipeline now uses **valid steering first**:
 
-1. define the target image;
-2. choose legal/free variables (URL suffix bytes, mask, version, ECC, possibly experimental pad bytes);
-3. regenerate Reed–Solomon parity;
-4. score the resulting fully internally consistent QR against the target;
-5. search the variable space;
-6. spend deliberate RS error budget only as final polish.
+1. define the target image/vector geometry;
+2. keep the useful URL short and fixed;
+3. treat full post-terminator pad bytes as experimental free variables;
+4. recompute Reed–Solomon parity and score the resulting valid RS matrix against the target;
+5. search all eight global masks;
+6. use scanner-aware sub-module rendering to protect logical centers while preserving smooth vector edges;
+7. spend deliberate RS error budget only as final polish.
 
 That turns excess QR capacity into an image-control channel rather than treating ECC as a paint bucket.
 
@@ -92,14 +97,14 @@ For any edited QR it:
 4. estimates the visual cost of restoring each codeword, using the target image when present;
 5. restores the cheapest codewords until each block is back under budget.
 
-This is intentionally conservative and explainable. Future repair stages will add decoder feedback, perceptual saliency, and valid-byte steering before reverting artwork.
+This is intentionally conservative and explainable. Future repair stages will add real decoder feedback, perceptual saliency, adaptive center contracts, and valid-byte steering before reverting artwork.
 
 ## Decoder semantics
 
 A QR decoder does **not** choose the semantically “closest URL.” Roughly:
 
 1. find and geometrically rectify the symbol;
-2. sample dark/light modules;
+2. locally binarize / sample dark-light structure;
 3. recover format/version data and unmask;
 4. assemble interleaved codewords;
 5. Reed–Solomon-correct each block;
@@ -114,10 +119,13 @@ If a block is within its correction radius, it should recover the original RS co
 - [`docs/INTELLIGENT_REPAIR.md`](docs/INTELLIGENT_REPAIR.md) — repair objectives and algorithms
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — implementation milestones
 - [`docs/QR_CODING_NOTES.md`](docs/QR_CODING_NOTES.md) — coding-theory notes and invariants
-- [`docs/VECTOR_TARGET_SOLVER.md`](docs/VECTOR_TARGET_SOLVER.md) — current smiley solver, objective function, and next-stage valid steering
+- [`docs/VECTOR_TARGET_SOLVER.md`](docs/VECTOR_TARGET_SOLVER.md) — current smiley solver and objective function
+- [`docs/SCANNER_AWARE_RENDERING.md`](docs/SCANNER_AWARE_RENDERING.md) — local-threshold scanner model, sub-module center contracts, SVG/vector rendering, and edge-first scoring
+- [`docs/FREE_PAD_STEERING.md`](docs/FREE_PAD_STEERING.md) — affine free-bit influence solver and post-terminator steering model
+- [`docs/CODEX_HANDOFF.md`](docs/CODEX_HANDOFF.md) — concrete local/Codex work plan for multi-decoder validation and stress testing
 
 ## Status
 
-Research / prototype. Do not infer production scan reliability from theoretical RS margin alone. Any real deployment should be tested across devices, decoders, print processes, screens, distance, rotation, blur, low contrast, glare, and compression.
+Research / prototype. Do not infer production scan reliability from theoretical RS margin or the surrogate scanner alone. Any real deployment should be tested across devices, independent decoder libraries, print processes, screens, distance, rotation, blur, low contrast, glare, and compression.
 
 No license has been selected yet.
